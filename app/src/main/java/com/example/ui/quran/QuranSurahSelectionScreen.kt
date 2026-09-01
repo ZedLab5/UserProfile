@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,6 +75,8 @@ import com.example.data.quran.KhatmaEngine
 import com.example.data.quran.QuranData
 import com.example.ui.MainViewModel
 import com.example.ui.NoorDestination
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -122,74 +125,25 @@ fun QuranSurahSelectionScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Holy Qur'an",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine,
-                                fontSize = 20.sp
-                            )
-                        )
-                        Text(
-                            text = "القرآن الكريم • 114 Surahs",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = DeepVibrantTeal,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 12.sp
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
+            NoorTopBar(
+                title = "Holy Qur'an",
+                eyebrow = "القرآن الكريم",
+                subtitle = "114 Surahs • Divine Revelation",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back",
                 actions = {
-                    // Sleek Primary Outline Button: Start a Khatma / View Khatma Plan
-                    OutlinedButton(
+                    NoorGlassIconButton(
                         onClick = { viewModel.navigateTo(NoorDestination.QURAN_KHATMA) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = DeepVibrantTeal
-                        ),
-                        border = BorderStroke(1.2.dp, DeepVibrantTeal.copy(alpha = 0.5f)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoStories,
-                                contentDescription = null,
-                                tint = DeepVibrantTeal,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = if (khatmaState != null && !khatmaState!!.plan.isCompleted) {
-                                    "Khatma (${khatmaState!!.progressPercentage}%)"
-                                } else {
-                                    "Start a Khatma"
-                                },
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = DeepVibrantTeal,
-                                    fontSize = 12.5.sp
-                                )
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+                        icon = Icons.Default.AutoStories,
+                        contentDescription = "Quran Khatma",
+                        isActive = khatmaState != null && !khatmaState!!.plan.isCompleted
+                    )
+                    NoorGlassIconButton(
+                        onClick = { viewModel.navigateTo(NoorDestination.QURAN_RECITERS) },
+                        icon = Icons.Default.Headphones,
+                        contentDescription = "Quran Reciters"
+                    )
+                }
             )
         },
         containerColor = CanvasMint,

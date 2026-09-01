@@ -81,6 +81,8 @@ import com.example.data.model.PrayerTime
 import com.example.data.model.PrayerZone
 import com.example.ui.MainViewModel
 import com.example.ui.components.BentoCard
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.BorderTealLight
 import com.example.ui.theme.CanvasMint
@@ -102,63 +104,19 @@ fun SalatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(PrimaryTealGradient),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = stringResource(R.string.salat_screen_title),
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = stringResource(R.string.salat_screen_title),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkPine
-                                )
-                            )
-                            Text(
-                                text = stringResource(R.string.salat_screen_subtitle),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = SlateTealMuted,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                            tint = DarkPine
-                        )
-                    }
-                },
+            NoorTopBar(
+                title = stringResource(R.string.salat_screen_title),
+                eyebrow = "NOOR",
+                subtitle = stringResource(R.string.salat_screen_subtitle),
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = stringResource(R.string.action_back),
                 actions = {
-                    IconButton(onClick = { isSettingsModalOpen = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = stringResource(R.string.salat_settings_sheet_title),
-                            tint = DeepVibrantTeal
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+                    NoorGlassIconButton(
+                        onClick = { isSettingsModalOpen = true },
+                        icon = Icons.Default.Tune,
+                        contentDescription = stringResource(R.string.salat_settings_sheet_title)
+                    )
+                }
             )
         },
         containerColor = CanvasMint,

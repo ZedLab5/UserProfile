@@ -59,6 +59,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -90,6 +91,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.localization.tr
 import com.example.ui.MainViewModel
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 
 private val NoorTealDark = Color(0xFF099382)
 private val NoorTealVibrant = Color(0xFF13A795)
@@ -116,6 +119,8 @@ fun UserProfileScreen(
     val userEmail by viewModel.userEmail.collectAsStateWithLifecycle()
     val userBio by viewModel.userBio.collectAsStateWithLifecycle()
     val isCloudSync by viewModel.isCloudSyncEnabled.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val isArabic = appLanguage == "ar"
 
     var showEditProfileSheet by remember { mutableStateOf(false) }
     var showChangePasswordSheet by remember { mutableStateOf(false) }
@@ -123,27 +128,45 @@ fun UserProfileScreen(
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
-    Box(
+    Scaffold(
+        topBar = {
+            NoorTopBar(
+                title = tr("profile_title", viewModel),
+                eyebrow = if (isArabic) "الملف الشخصي" else "SPIRITUAL PROFILE",
+                subtitle = if (isUserLoggedIn) userName else (if (isArabic) "الحساب والمزامنة السحابية" else "Account & Cloud Sync"),
+                onBackClick = onNavigateBack,
+                backContentDescription = stringResource(R.string.action_back),
+                actions = {
+                    NoorGlassIconButton(
+                        onClick = { viewModel.openSettingsModal() },
+                        icon = Icons.Default.Settings,
+                        contentDescription = "Settings"
+                    )
+                }
+            )
+        },
+        containerColor = Color(0xFFF6FAF8),
         modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFFF6FAF8))
-    ) {
+    ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Top Header Bar & User Header Card (Avatar with tap-to-edit, Name, Email/Phone)
+            // 1. User Profile Header Card
             item(key = "user_header_section") {
-                ProfileHeaderCard(
-                    viewModel = viewModel,
-                    isUserLoggedIn = isUserLoggedIn,
-                    userName = userName,
-                    userEmail = userEmail,
-                    onNavigateBack = onNavigateBack,
-                    onEditClick = { if (isUserLoggedIn) showEditProfileSheet = true else showConnectSheet = true },
-                    onAvatarClick = { if (isUserLoggedIn) showEditProfileSheet = true else showConnectSheet = true }
-                )
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    UserProfileCard(
+                        viewModel = viewModel,
+                        isUserLoggedIn = isUserLoggedIn,
+                        userName = userName,
+                        userEmail = userEmail,
+                        onEditClick = { if (isUserLoggedIn) showEditProfileSheet = true else showConnectSheet = true },
+                        onAvatarClick = { if (isUserLoggedIn) showEditProfileSheet = true else showConnectSheet = true }
+                    )
+                }
             }
 
             // 2. Account & Security Section
@@ -273,12 +296,11 @@ fun UserProfileScreen(
 }
 
 @Composable
-private fun ProfileHeaderCard(
+private fun UserProfileCard(
     viewModel: MainViewModel,
     isUserLoggedIn: Boolean,
     userName: String,
     userEmail: String,
-    onNavigateBack: () -> Unit,
     onEditClick: () -> Unit,
     onAvatarClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -286,163 +308,107 @@ private fun ProfileHeaderCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = Color.White,
-        shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp),
+        shape = RoundedCornerShape(24.dp),
         border = BorderStroke(0.5.dp, NoorCardBorder),
-        shadowElevation = 2.dp
+        shadowElevation = 1.5.dp
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Top Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Avatar with tap-to-edit badge
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(NoorGoldSoft)
+                    .border(2.dp, NoorGoldAccent, CircleShape)
+                    .clickable { onAvatarClick() }
             ) {
-                IconButton(
-                    onClick = onNavigateBack,
+                Image(
+                    painter = painterResource(id = R.drawable.img_user_avatar),
+                    contentDescription = "Profile Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Edit camera/tap overlay badge
+                Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .align(Alignment.BottomEnd)
+                        .size(24.dp)
                         .clip(CircleShape)
-                        .background(NoorSurfaceSoft)
+                        .background(NoorTealDark)
+                        .border(1.5.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.action_back),
-                        tint = NoorDarkPine,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Tap to edit",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = if (isUserLoggedIn) userName else "Guest Mode",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = NoorDarkPine,
+                            fontSize = 19.sp
+                        )
                     )
                 }
 
+                Spacer(modifier = Modifier.height(3.dp))
+
                 Text(
-                    text = tr("profile_title", viewModel),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = NoorDarkPine,
-                        fontSize = 18.sp
+                    text = if (isUserLoggedIn && userEmail.isNotBlank()) userEmail else "Tap to connect account & sync data",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = NoorSageSlate,
+                        fontSize = 12.5.sp
                     )
                 )
 
-                IconButton(
-                    onClick = { viewModel.openSettingsModal() },
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(NoorSurfaceSoft)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Status Pill
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isUserLoggedIn) NoorSoftGreenBg else NoorGoldSoft,
+                    border = BorderStroke(1.dp, if (isUserLoggedIn) NoorSoftGreenBorder else NoorGoldBorder)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = NoorDarkPine,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // User Header Info with Tap-to-Edit Avatar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Avatar with tap-to-edit badge
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(NoorGoldSoft)
-                        .border(2.dp, NoorGoldAccent, CircleShape)
-                        .clickable { onAvatarClick() }
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_user_avatar),
-                        contentDescription = "Profile Avatar",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    // Edit camera/tap overlay badge
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(NoorTealDark)
-                            .border(1.5.dp, Color.White, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Tap to edit",
-                            tint = Color.White,
-                            modifier = Modifier.size(12.dp)
-                        )
-                    }
-                }
-
-                Column(modifier = Modifier.weight(1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                     ) {
+                        Icon(
+                            imageVector = if (isUserLoggedIn) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                            contentDescription = null,
+                            tint = if (isUserLoggedIn) NoorTealDark else NoorGoldAccent,
+                            modifier = Modifier.size(13.dp)
+                        )
                         Text(
-                            text = if (isUserLoggedIn) userName else "Guest Mode",
-                            style = MaterialTheme.typography.titleLarge.copy(
+                            text = if (isUserLoggedIn) "Connected (Google / Cloud)" else "Guest Account",
+                            style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = NoorDarkPine,
-                                fontSize = 19.sp
+                                color = if (isUserLoggedIn) NoorTealDark else NoorGoldAccent,
+                                fontSize = 11.sp
                             )
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(3.dp))
-
-                    Text(
-                        text = if (isUserLoggedIn && userEmail.isNotBlank()) userEmail else "Tap to connect account & sync data",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = NoorSageSlate,
-                            fontSize = 12.5.sp
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Status Pill
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isUserLoggedIn) NoorSoftGreenBg else NoorGoldSoft,
-                        border = BorderStroke(1.dp, if (isUserLoggedIn) NoorSoftGreenBorder else NoorGoldBorder)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isUserLoggedIn) Icons.Default.CloudDone else Icons.Default.CloudOff,
-                                contentDescription = null,
-                                tint = if (isUserLoggedIn) NoorTealDark else NoorGoldAccent,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = if (isUserLoggedIn) "Connected (Google / Cloud)" else "Guest Account",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isUserLoggedIn) NoorTealDark else NoorGoldAccent,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

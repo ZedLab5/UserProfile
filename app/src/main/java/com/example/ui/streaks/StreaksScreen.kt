@@ -81,6 +81,7 @@ import com.example.data.model.DayStreakStatus
 import com.example.data.model.StreakActivityType
 import com.example.ui.MainViewModel
 import com.example.ui.NoorDestination
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -106,39 +107,12 @@ fun StreaksScreen(
     Scaffold(
         modifier = modifier.testTag("streaks_screen"),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Spiritual Consistency",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine
-                            )
-                        )
-                        Text(
-                            text = "Unified Daily Tracker",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = SlateTealMuted
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = { viewModel.navigateBack() },
-                        modifier = Modifier.testTag("streaks_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CanvasMint
-                )
+            NoorTopBar(
+                title = "Spiritual Consistency",
+                eyebrow = "ISTIQAMAH",
+                subtitle = "Unified Daily Spiritual Tracker",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back"
             )
         },
         containerColor = CanvasMint

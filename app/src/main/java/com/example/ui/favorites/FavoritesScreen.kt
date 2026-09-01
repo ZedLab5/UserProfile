@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
 import com.example.ui.components.BentoCard
 import com.example.ui.components.GoldBadge
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -71,57 +72,12 @@ fun FavoritesScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(GoldAccentGradient),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = "Favorites",
-                                tint = DarkPine,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Saved Favorites",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                )
-                                GoldBadge(text = "${favorites.size} Items")
-                            }
-                            Text(
-                                text = "Your personal repository of divine guidance",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = SlateTealMuted,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+            NoorTopBar(
+                title = "Saved Favorites",
+                eyebrow = "SAVED ITEMS",
+                subtitle = "${favorites.size} items • Personal repository of guidance",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back"
             )
         },
         containerColor = CanvasMint,

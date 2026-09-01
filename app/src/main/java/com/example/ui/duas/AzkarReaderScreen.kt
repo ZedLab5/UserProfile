@@ -93,6 +93,8 @@ import com.example.data.model.DuaItem
 import com.example.data.quran.DuaData
 import com.example.ui.MainViewModel
 import com.example.ui.NoorDestination
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -154,80 +156,27 @@ fun AzkarReaderScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = currentCategoryModel.titleEnglish,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine,
-                                fontSize = 19.sp
-                            )
-                        )
-                        Text(
-                            text = "$completedCount of $totalCount Completed • Daily Protection",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = DeepVibrantTeal,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 12.sp
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
+            NoorTopBar(
+                title = currentCategoryModel.titleEnglish,
+                eyebrow = if (currentCategoryModel.titleArabic.isNotBlank()) currentCategoryModel.titleArabic else "HISN AL-MUSLIM",
+                subtitle = "$completedCount of $totalCount Completed • Daily Protection",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back",
                 actions = {
                     // Reset counts button
-                    IconButton(onClick = { viewModel.resetCategoryDuaCounts(selectedCategory) }) {
-                        Surface(
-                            shape = CircleShape,
-                            color = SoftTealTint,
-                            border = BorderStroke(1.dp, BorderTealGray)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Reset Counts",
-                                    tint = DarkPine,
-                                    modifier = Modifier.size(17.dp)
-                                )
-                            }
-                        }
-                    }
+                    NoorGlassIconButton(
+                        onClick = { viewModel.resetCategoryDuaCounts(selectedCategory) },
+                        icon = Icons.Default.Refresh,
+                        contentDescription = "Reset Counts"
+                    )
 
-                    // Settings Button in top right corner
-                    IconButton(onClick = { showSettingsSheet = true }) {
-                        Surface(
-                            shape = CircleShape,
-                            color = SoftTealTint,
-                            border = BorderStroke(1.dp, BorderTealGray)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Tune,
-                                    contentDescription = "Azkar Settings",
-                                    tint = DeepVibrantTeal,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+                    // Settings Button
+                    NoorGlassIconButton(
+                        onClick = { showSettingsSheet = true },
+                        icon = Icons.Default.Tune,
+                        contentDescription = "Azkar Settings"
+                    )
+                }
             )
         },
         containerColor = CanvasMint,
@@ -238,8 +187,8 @@ fun AzkarReaderScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Daily Completion Progress Card with Gold Circular Progress Indicator on Right Side
             item(key = "category_progress_banner") {

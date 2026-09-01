@@ -105,6 +105,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.model.DhikrItem
 import com.example.ui.MainViewModel
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -217,97 +219,24 @@ fun TasbihScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.tasbih_screen_title),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine,
-                                fontSize = 20.sp
-                            )
-                        )
-                        Text(
-                            text = stringResource(R.string.tasbih_screen_subtitle),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = DeepVibrantTeal,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 12.sp
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                            tint = DarkPine
-                        )
-                    }
-                },
+            NoorTopBar(
+                title = stringResource(R.string.tasbih_screen_title),
+                eyebrow = "NOOR",
+                subtitle = stringResource(R.string.tasbih_screen_subtitle),
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = stringResource(R.string.action_back),
                 actions = {
-                    // "Hide Tasbih" / "Show Tasbih" Text Link Toggle
-                    TextButton(
-                        onClick = { isTasbihBeadsVisible = !isTasbihBeadsVisible }
-                    ) {
-                        Text(
-                            text = if (isTasbihBeadsVisible) {
-                                stringResource(R.string.tasbih_hide_tasbih)
-                            } else {
-                                stringResource(R.string.tasbih_show_tasbih)
-                            },
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DeepVibrantTeal
-                            )
-                        )
-                    }
-
-                    // Theme Picker Action
-                    IconButton(onClick = { showThemesBottomSheet = true }) {
-                        Surface(
-                            shape = CircleShape,
-                            color = SoftTealTint,
-                            border = BorderStroke(1.dp, BorderTealGray)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FormatPaint,
-                                    contentDescription = stringResource(R.string.tasbih_cd_change_theme),
-                                    tint = DeepVibrantTeal,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // Settings Action (Navigates to dedicated settings page matching other screens)
-                    IconButton(onClick = { viewModel.openSettingsModal() }) {
-                        Surface(
-                            shape = CircleShape,
-                            color = SoftTealTint,
-                            border = BorderStroke(1.dp, BorderTealGray)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = stringResource(R.string.nav_settings),
-                                    tint = DeepVibrantTeal,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+                    NoorGlassIconButton(
+                        onClick = { showThemesBottomSheet = true },
+                        icon = Icons.Default.FormatPaint,
+                        contentDescription = stringResource(R.string.tasbih_cd_change_theme)
+                    )
+                    NoorGlassIconButton(
+                        onClick = { viewModel.openSettingsModal() },
+                        icon = Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.nav_settings)
+                    )
+                }
             )
         },
         containerColor = CanvasMint,

@@ -85,6 +85,8 @@ import com.example.ui.MainViewModel
 import com.example.ui.SalatTab
 import com.example.ui.components.BentoCard
 import com.example.ui.components.GoldBadge
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.BorderTealLight
 import com.example.ui.theme.CanvasMint
@@ -184,77 +186,27 @@ fun QiblaScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(if (isAligned) SuccessGreen else DeepVibrantTeal),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isAligned) Icons.Default.CheckCircle else Icons.Default.CompassCalibration,
-                                contentDescription = "Qibla",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = if (isArabic) "اتجاه القبلة المباشر" else "Live Qibla Compass",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                )
-                                GoldBadge(text = if (isArabic) "الكعبة المشرفة" else "Kaaba 🕋")
-                            }
-                            Text(
-                                text = if (isManualMode) {
-                                    if (isArabic) "وضع التدوير اليدوي للتجربة" else "Interactive Compass Mode"
-                                } else {
-                                    if (isArabic) "مستشعر الجهاز المغناطيسي نشط" else "Live Device Magnetometer"
-                                },
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (isAligned) SuccessGreen else SlateTealMuted,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isAligned) FontWeight.Bold else FontWeight.Normal
-                                )
-                            )
-                        }
-                    }
+            NoorTopBar(
+                title = if (isArabic) "اتجاه القبلة" else "Live Qibla Compass",
+                eyebrow = if (isArabic) "الكعبة المشرفة" else "KAABA 🕋",
+                subtitle = if (isManualMode) {
+                    if (isArabic) "وضع التدوير اليدوي" else "Interactive Compass Mode"
+                } else {
+                    if (isArabic) "مستشعر الجهاز المغناطيسي نشط" else "Live Device Magnetometer"
                 },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back",
                 actions = {
-                    // Toggle Live Sensor vs Interactive Rotation
-                    IconButton(
+                    NoorGlassIconButton(
                         onClick = {
                             isManualMode = !isManualMode
                             viewModel.triggerHaptic()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (isManualMode) Icons.Default.Explore else Icons.Default.Sensors,
-                            contentDescription = "Toggle Sensor Mode",
-                            tint = if (isManualMode) DeepVibrantTeal else DarkPine
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+                        },
+                        icon = if (isManualMode) Icons.Default.Explore else Icons.Default.Sensors,
+                        contentDescription = "Toggle Sensor Mode",
+                        isActive = isAligned
+                    )
+                }
             )
         },
         containerColor = CanvasMint,

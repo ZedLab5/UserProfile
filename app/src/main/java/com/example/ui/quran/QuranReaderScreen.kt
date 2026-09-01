@@ -96,6 +96,8 @@ import com.example.data.quran.KhatmaEngine
 import com.example.ui.MainViewModel
 import com.example.data.localization.tr
 import com.example.ui.NoorDestination
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -238,50 +240,23 @@ fun QuranReaderScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                text = "${currentSurah.number}. ${currentSurah.nameEnglish}",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = themeColors.arabicText,
-                                    fontSize = 17.sp
-                                ),
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "${currentSurah.revelationType} • ${currentSurah.totalVerses} Ayahs",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = themeColors.translationText.copy(alpha = 0.8f),
-                                    fontSize = 11.5.sp
-                                ),
-                                maxLines = 1
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { viewModel.navigateBack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = themeColors.arabicText
-                            )
-                        }
-                    },
+                NoorTopBar(
+                    title = "${currentSurah.number}. ${currentSurah.nameEnglish}",
+                    eyebrow = "${currentSurah.revelationType.uppercase()} • ${currentSurah.nameArabic}",
+                    subtitle = "${currentSurah.totalVerses} Ayahs • ${currentSurah.englishMeaning}",
+                    onBackClick = { viewModel.navigateBack() },
+                    backContentDescription = "Back",
                     actions = {
-                        // Quick Toggle: Mushaf Flow Mode (Borderless vector icon)
-                        IconButton(onClick = { viewModel.toggleMushafFlowMode() }) {
-                            Icon(
-                                imageVector = Icons.Default.ViewAgenda,
-                                contentDescription = "Distraction-Free Mushaf Flow",
-                                tint = if (isMushafFlowMode) themeColors.accent else themeColors.arabicText.copy(alpha = 0.7f),
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        // Quick Toggle: Mushaf Flow Mode
+                        NoorGlassIconButton(
+                            onClick = { viewModel.toggleMushafFlowMode() },
+                            icon = Icons.Default.ViewAgenda,
+                            contentDescription = "Distraction-Free Mushaf Flow",
+                            isActive = isMushafFlowMode
+                        )
 
-                        // Minimal Audio Play/Pause Button for Reading & Listening (Disabled when MP3 player is running)
-                        IconButton(
+                        // Minimal Audio Play/Pause Button for Reading & Listening
+                        NoorGlassIconButton(
                             onClick = {
                                 if (isMp3PlayerRunning) {
                                     viewModel.showToast("MP3 player is active. Pause it using the floating bar to start recitation here.")
@@ -291,33 +266,19 @@ fun QuranReaderScreen(
                                     val startVerse = if (currentPlayingVerse > 0) currentPlayingVerse else 1
                                     viewModel.playAyah(currentSurah, startVerse, openPlayer = false)
                                 }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = if (isCurrentSurahPlaying && isAyahAudioMode) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isCurrentSurahPlaying && isAyahAudioMode) "Pause Recitation" else "Play Recitation",
-                                tint = if (isMp3PlayerRunning) {
-                                    themeColors.arabicText.copy(alpha = 0.28f)
-                                } else if (isCurrentSurahPlaying && isAyahAudioMode) {
-                                    MetallicGold
-                                } else {
-                                    themeColors.accent
-                                },
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                            },
+                            icon = if (isCurrentSurahPlaying && isAyahAudioMode) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isCurrentSurahPlaying && isAyahAudioMode) "Pause Recitation" else "Play Recitation",
+                            isActive = isCurrentSurahPlaying && isAyahAudioMode
+                        )
 
-                        // Reading Display Settings (Borderless vector icon)
-                        IconButton(onClick = { showSettingsSheet = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Reading Settings",
-                                tint = themeColors.arabicText,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = themeColors.background)
+                        // Reading Display Settings
+                        NoorGlassIconButton(
+                            onClick = { showSettingsSheet = true },
+                            icon = Icons.Default.Settings,
+                            contentDescription = "Reading Settings"
+                        )
+                    }
                 )
             },
             containerColor = themeColors.background,
@@ -341,8 +302,8 @@ fun QuranReaderScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Surah Header Banner with Previous / Next Navigation
                     item(key = "surah_header") {

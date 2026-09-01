@@ -62,6 +62,8 @@ import com.example.data.local.DailyHabitEntity
 import com.example.ui.MainViewModel
 import com.example.ui.components.BentoCard
 import com.example.ui.components.GoldBadge
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.components.RadialProgressRing
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.BorderTealLight
@@ -98,57 +100,19 @@ fun HabitTrackerScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(PrimaryTealGradient),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Routines",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Daily Routine & Habits",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                )
-                                GoldBadge(text = "$completedCount/$totalCount Completed")
-                            }
-                            Text(
-                                text = "Build steadfast spiritual consistency",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = SlateTealMuted,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+            NoorTopBar(
+                title = "Daily Routine & Habits",
+                eyebrow = "ISTIQAMAH",
+                subtitle = "$completedCount/$totalCount Completed • Steadfast Consistency",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back",
+                actions = {
+                    NoorGlassIconButton(
+                        onClick = { showAddDialog = true },
+                        icon = Icons.Default.Add,
+                        contentDescription = "Add Habit"
+                    )
+                }
             )
         },
         floatingActionButton = {

@@ -63,6 +63,7 @@ import com.example.data.model.Reciter
 import com.example.data.quran.QuranData
 import com.example.ui.MainViewModel
 import com.example.ui.NoorDestination
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -122,38 +123,12 @@ fun QuranRecitersListScreen(
             .navigationBarsPadding(),
         containerColor = CanvasMint,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = if (isArabic) "قراء القرآن الكريم" else "Quran Reciters",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine,
-                                fontSize = 19.sp
-                            )
-                        )
-                        Text(
-                            text = if (isArabic) "${reciters.size} قارئاً معتمداً" else "${reciters.size} World Renowned Qaris",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = SlateTealMuted,
-                                fontSize = 12.sp
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                            tint = DarkPine
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CanvasMint
-                )
+            NoorTopBar(
+                title = if (isArabic) "قراء القرآن الكريم" else "Quran Reciters",
+                eyebrow = if (isArabic) "تلاوات عطرة" else "AUTHENTIC RECITATIONS",
+                subtitle = if (isArabic) "${reciters.size} قارئاً معتمداً" else "${reciters.size} World Renowned Qaris",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = stringResource(R.string.action_back)
             )
         }
     ) { innerPadding ->

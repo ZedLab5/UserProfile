@@ -79,6 +79,8 @@ import com.example.data.model.DuaItem
 import com.example.data.quran.DuaData
 import com.example.ui.MainViewModel
 import com.example.ui.NoorDestination
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -126,78 +128,25 @@ fun DuasLibraryScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Du'as & Azkar",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine,
-                                fontSize = 20.sp
-                            )
-                        )
-                        Text(
-                            text = "Hisn al-Muslim • Authentic Supplications",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = DeepVibrantTeal,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 12.sp
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
+            NoorTopBar(
+                title = "Du'as & Azkar",
+                eyebrow = "HISN AL-MUSLIM",
+                subtitle = "Authentic Supplications & Remembrances",
+                onBackClick = { viewModel.navigateBack() },
+                backContentDescription = "Back",
                 actions = {
-                    IconButton(onClick = { viewModel.navigateTo(NoorDestination.FAVORITES) }) {
-                        Surface(
-                            shape = CircleShape,
-                            color = SoftTealTint,
-                            border = BorderStroke(1.dp, BorderTealGray)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Bookmark,
-                                    contentDescription = "Favorites",
-                                    tint = DeepVibrantTeal,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    IconButton(onClick = { showSettingsSheet = true }) {
-                        Surface(
-                            shape = CircleShape,
-                            color = SoftTealTint,
-                            border = BorderStroke(1.dp, BorderTealGray)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Tune,
-                                    contentDescription = "Azkar Settings",
-                                    tint = DeepVibrantTeal,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = CanvasMint)
+                    NoorGlassIconButton(
+                        onClick = { viewModel.navigateTo(NoorDestination.FAVORITES) },
+                        icon = Icons.Default.Bookmark,
+                        contentDescription = "Favorites",
+                        badgeCount = favorites.size
+                    )
+                    NoorGlassIconButton(
+                        onClick = { showSettingsSheet = true },
+                        icon = Icons.Default.Tune,
+                        contentDescription = "Azkar Settings"
+                    )
+                }
             )
         },
         containerColor = CanvasMint,

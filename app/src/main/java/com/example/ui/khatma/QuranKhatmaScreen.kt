@@ -110,6 +110,8 @@ import com.example.data.quran.KhatmaFullDashboardState
 import com.example.data.quran.KhatmaPaceStatus
 import com.example.data.quran.KhatmaSessionInfo
 import com.example.ui.MainViewModel
+import com.example.ui.components.NoorGlassIconButton
+import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.BorderTealLight
 import com.example.ui.theme.CanvasMint
@@ -146,66 +148,26 @@ fun QuranKhatmaScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Quran Khatma",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.5).sp,
-                                color = DarkPine
-                            )
-                        )
-                        Text(
-                            text = "ختمة القرآن الكريم",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = DeepVibrantTeal,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.testTag("khatma_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkPine
-                        )
-                    }
-                },
+            NoorTopBar(
+                title = "Quran Khatma",
+                eyebrow = "ختمة القرآن",
+                subtitle = "Completion Planner & Progress",
+                onBackClick = onNavigateBack,
+                backContentDescription = "Back",
                 actions = {
-                    IconButton(
+                    NoorGlassIconButton(
                         onClick = { viewModel.isKhatmaHistorySheetOpen.value = true },
-                        modifier = Modifier.testTag("khatma_history_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "Khatma History",
-                            tint = DarkPine
+                        icon = Icons.Default.History,
+                        contentDescription = "Khatma History"
+                    )
+                    if (dashboardState != null) {
+                        NoorGlassIconButton(
+                            onClick = { viewModel.isKhatmaSettingsSheetOpen.value = true },
+                            icon = Icons.Default.Settings,
+                            contentDescription = "Khatma Settings"
                         )
                     }
-                    if (dashboardState != null) {
-                        IconButton(
-                            onClick = { viewModel.isKhatmaSettingsSheetOpen.value = true },
-                            modifier = Modifier.testTag("khatma_settings_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Khatma Settings",
-                                tint = DarkPine
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CanvasMint,
-                    titleContentColor = DarkPine
-                )
+                }
             )
         },
         containerColor = CanvasMint
