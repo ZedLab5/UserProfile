@@ -1,6 +1,6 @@
 package com.example.ui.qibla
 
-import android.content.Context
+import android.hardware.SensorManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -10,6 +10,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -33,37 +37,38 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CompassCalibration
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mosque
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
@@ -79,12 +84,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.prayer.CompassReading
 import com.example.data.prayer.CompassSensorManager
 import com.example.data.prayer.QiblaCalculator
 import com.example.ui.MainViewModel
 import com.example.ui.SalatTab
 import com.example.ui.components.BentoCard
-import com.example.ui.components.GoldBadge
 import com.example.ui.components.NoorGlassIconButton
 import com.example.ui.components.NoorTopBar
 import com.example.ui.theme.BorderTealGray
@@ -120,24 +125,34 @@ fun QiblaScreen(
         QiblaCalculator.calculateQibla(selectedZone.latitude, selectedZone.longitude)
     }
 
-    // Hardware sensor integration
+    // Hardware sensor integration with declination correction & accuracy monitoring
     val compassSensorManager = remember(context) { CompassSensorManager(context) }
+    var currentReading by remember { mutableStateOf<CompassReading?>(null) }
     var sensorHeading by remember { mutableFloatStateOf(0f) }
+    var sensorAccuracy by remember { mutableIntStateOf(SensorManager.SENSOR_STATUS_ACCURACY_HIGH) }
+    var isLowAccuracy by remember { mutableStateOf(false) }
+
     var manualSimulatedHeading by remember { mutableFloatStateOf(0f) }
     var isManualMode by remember { mutableStateOf(!compassSensorManager.hasCompassSensors) }
 
     var isZoneMenuOpen by remember { mutableStateOf(false) }
 
-    // Collect sensor data continuously when active
-    LaunchedEffect(isManualMode) {
+    // Collect sensor data continuously with True North declination correction
+    LaunchedEffect(isManualMode, selectedZone) {
         if (!isManualMode && compassSensorManager.hasCompassSensors) {
-            compassSensorManager.getHeadingFlow().collectLatest { rawHeading ->
-                sensorHeading = rawHeading
-            }
+            compassSensorManager.getCompassFlow(selectedZone.latitude, selectedZone.longitude)
+                .collectLatest { reading ->
+                    currentReading = reading
+                    sensorHeading = reading.trueHeading
+                    sensorAccuracy = reading.accuracy
+                    isLowAccuracy = reading.isLowAccuracy
+                }
         }
     }
 
+    // Always use True North heading (corrected for geomagnetic declination)
     val currentHeading = if (isManualMode) manualSimulatedHeading else sensorHeading
+    val activeDeclination = currentReading?.declination ?: qiblaInfo.magneticDeclination
 
     // Shortest path angle rotation interpolation
     val animatedHeading = remember { Animatable(currentHeading) }
@@ -152,10 +167,10 @@ fun QiblaScreen(
 
     // Live relative angle towards Kaaba from phone's top: (QiblaBearing - Heading)
     val relativeAngle = remember(qiblaInfo.azimuthDegrees, currentHeading) {
-        ((qiblaInfo.azimuthDegrees - currentHeading + 540f) % 360f) - 180f
+        QiblaCalculator.computeRelativeAngle(qiblaInfo.azimuthDegrees, currentHeading)
     }
 
-    val isAligned = abs(relativeAngle) <= 4.0f
+    val isAligned = abs(relativeAngle) <= 4.0f && !isLowAccuracy
 
     // Trigger haptic vibration on alignment entry
     var wasAligned by remember { mutableStateOf(false) }
@@ -179,33 +194,41 @@ fun QiblaScreen(
     )
 
     val dialBorderColor by animateColorAsState(
-        targetValue = if (isAligned) SuccessGreen else BorderTealGray,
+        targetValue = when {
+            isLowAccuracy -> Color(0xFFE57373)
+            isAligned -> SuccessGreen
+            else -> BorderTealGray
+        },
         animationSpec = tween(400),
         label = "borderColor"
     )
 
     Scaffold(
         topBar = {
+            val declinationSign = if (activeDeclination >= 0) "+" else ""
+            val declinationFormatted = "$declinationSign${String.format(Locale.US, "%.1f", activeDeclination)}°"
             NoorTopBar(
-                title = if (isArabic) "اتجاه القبلة" else "Live Qibla Compass",
-                eyebrow = if (isArabic) "الكعبة المشرفة" else "KAABA 🕋",
-                subtitle = if (isManualMode) {
-                    if (isArabic) "وضع التدوير اليدوي" else "Interactive Compass Mode"
+                title = if (isArabic) "اتجاه القبلة المشرفة" else "Qibla Direction",
+                eyebrow = if (isArabic) "الكعبة المشرفة" else "MAKKAH AL-MUKARRAMAH",
+                subtitle = if (isArabic) {
+                    "الشمال الحقيقي • تصحيح الميل ($declinationFormatted)"
                 } else {
-                    if (isArabic) "مستشعر الجهاز المغناطيسي نشط" else "Live Device Magnetometer"
+                    "True North • Declination ($declinationFormatted)"
                 },
                 onBackClick = { viewModel.navigateBack() },
                 backContentDescription = "Back",
                 actions = {
-                    NoorGlassIconButton(
-                        onClick = {
-                            isManualMode = !isManualMode
-                            viewModel.triggerHaptic()
-                        },
-                        icon = if (isManualMode) Icons.Default.Explore else Icons.Default.Sensors,
-                        contentDescription = "Toggle Sensor Mode",
-                        isActive = isAligned
-                    )
+                    if (compassSensorManager.hasCompassSensors) {
+                        NoorGlassIconButton(
+                            onClick = {
+                                isManualMode = !isManualMode
+                                viewModel.triggerHaptic()
+                            },
+                            icon = if (isManualMode) Icons.Default.Explore else Icons.Default.Sensors,
+                            contentDescription = "Sensor Mode",
+                            isActive = isAligned
+                        )
+                    }
                 }
             )
         },
@@ -223,7 +246,7 @@ fun QiblaScreen(
         ) {
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Location & Target Bearing Banner
+            // Location & Target Bearing Banner with Declination Offset
             BentoCard(
                 modifier = Modifier.fillMaxWidth(),
                 backgroundColor = SurfaceWhite,
@@ -285,11 +308,12 @@ fun QiblaScreen(
 
                         Spacer(modifier = Modifier.height(3.dp))
                         val directionLabel = if (isArabic) qiblaInfo.arabicDirection else qiblaInfo.cardinalDirection
+                        val declinationText = "${if (activeDeclination >= 0) "+" else ""}${String.format(Locale.US, "%.1f", activeDeclination)}°"
                         Text(
                             text = if (isArabic) {
-                                "زاوية القبلة: ${String.format(Locale.getDefault(), "%.1f", qiblaInfo.azimuthDegrees)}° ($directionLabel)"
+                                "زاوية القبلة: ${String.format(Locale.getDefault(), "%.1f", qiblaInfo.azimuthDegrees)}° ($directionLabel) • ميل: $declinationText"
                             } else {
-                                "Kaaba Bearing: ${String.format(Locale.US, "%.1f", qiblaInfo.azimuthDegrees)}° ($directionLabel)"
+                                "Kaaba Bearing: ${String.format(Locale.US, "%.1f", qiblaInfo.azimuthDegrees)}° ($directionLabel) • Decl: $declinationText"
                             },
                             style = MaterialTheme.typography.bodySmall.copy(color = SlateTealMuted)
                         )
@@ -316,8 +340,19 @@ fun QiblaScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                color = if (isAligned) SuccessGreen.copy(alpha = 0.12f) else SoftTealTint,
-                border = BorderStroke(1.dp, if (isAligned) SuccessGreen else BorderTealLight)
+                color = when {
+                    isLowAccuracy -> Color(0xFFFFFBEB)
+                    isAligned -> SuccessGreen.copy(alpha = 0.12f)
+                    else -> SoftTealTint
+                },
+                border = BorderStroke(
+                    1.dp,
+                    when {
+                        isLowAccuracy -> Color(0xFFFDE68A)
+                        isAligned -> SuccessGreen
+                        else -> BorderTealLight
+                    }
+                )
             ) {
                 Row(
                     modifier = Modifier
@@ -330,11 +365,21 @@ fun QiblaScreen(
                         modifier = Modifier
                             .size(28.dp)
                             .clip(CircleShape)
-                            .background(if (isAligned) SuccessGreen else DeepVibrantTeal),
+                            .background(
+                                when {
+                                    isLowAccuracy -> Color(0xFFD97706)
+                                    isAligned -> SuccessGreen
+                                    else -> DeepVibrantTeal
+                                }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isAligned) Icons.Default.CheckCircle else Icons.Default.Navigation,
+                            imageVector = when {
+                                isLowAccuracy -> Icons.Default.CompassCalibration
+                                isAligned -> Icons.Default.CheckCircle
+                                else -> Icons.Default.Navigation
+                            },
                             contentDescription = "Status",
                             tint = Color.White,
                             modifier = Modifier.size(16.dp)
@@ -343,23 +388,34 @@ fun QiblaScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (isAligned) {
-                                if (isArabic) "أنت مواجه للقبلة المشرفة تماماً!" else "You are perfectly facing the Qibla!"
-                            } else if (relativeAngle > 0) {
-                                if (isArabic) "استدر يميناً بمقدار ${relativeAngle.roundToInt()}°" else "Turn right ${relativeAngle.roundToInt()}° to align"
-                            } else {
-                                if (isArabic) "استدر يساراً بمقدار ${abs(relativeAngle).roundToInt()}°" else "Turn left ${abs(relativeAngle).roundToInt()}° to align"
+                            text = when {
+                                isLowAccuracy -> {
+                                    if (isArabic) "دقة البوصلة منخفضة — يرجى المعايرة" else "Compass Accuracy Low — Calibrate Sensor"
+                                }
+                                isAligned -> {
+                                    if (isArabic) "أنت مواجه للقبلة المشرفة تماماً!" else "You are perfectly facing the Qibla!"
+                                }
+                                relativeAngle > 0 -> {
+                                    if (isArabic) "استدر يميناً بمقدار ${relativeAngle.roundToInt()}°" else "Turn right ${relativeAngle.roundToInt()}° to align"
+                                }
+                                else -> {
+                                    if (isArabic) "استدر يساراً بمقدار ${abs(relativeAngle).roundToInt()}°" else "Turn left ${abs(relativeAngle).roundToInt()}° to align"
+                                }
                             },
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = if (isAligned) SuccessGreen else DarkPine
+                                color = when {
+                                    isLowAccuracy -> Color(0xFF92400E)
+                                    isAligned -> SuccessGreen
+                                    else -> DarkPine
+                                }
                             )
                         )
                         Text(
                             text = if (isArabic) {
-                                "اتجاه الهاتف: ${(currentHeading % 360f + 360f).roundToInt() % 360}° • زاوية الكعبة: ${qiblaInfo.azimuthDegrees.roundToInt()}°"
+                                "الشمال الحقيقي: ${(currentHeading % 360f + 360f).roundToInt() % 360}° • زاوية الكعبة: ${qiblaInfo.azimuthDegrees.roundToInt()}°"
                             } else {
-                                "Phone Heading: ${(currentHeading % 360f + 360f).roundToInt() % 360}° • Kaaba: ${qiblaInfo.azimuthDegrees.roundToInt()}°"
+                                "True Heading: ${(currentHeading % 360f + 360f).roundToInt() % 360}° (True North) • Kaaba: ${qiblaInfo.azimuthDegrees.roundToInt()}°"
                             },
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = SlateTealMuted,
@@ -370,7 +426,68 @@ fun QiblaScreen(
                 }
             }
 
-            // Main Rotating Dynamic Compass
+            // Low-Accuracy Sensor Warning Alert (Figure-8 recalibration guidance)
+            AnimatedVisibility(
+                visible = isLowAccuracy,
+                enter = fadeIn() + slideInVertically(),
+                exit = fadeOut() + slideOutVertically()
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFFFF7ED),
+                    border = BorderStroke(1.2.dp, Color(0xFFFDBA74))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEA580C)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CompassCalibration,
+                                contentDescription = "Calibrate",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isArabic) "معايرة البوصلة مطلوبة" else "Recalibration Required",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF9A3412)
+                                )
+                            )
+                            Text(
+                                text = if (isArabic) {
+                                    "حرك هاتفك في الهواء بحركة شكل الرقم (8) لتحسين دقة مستشعر البوصلة وإزالة التشويش."
+                                } else {
+                                    "Move your phone in a smooth figure-8 motion in the air to calibrate the magnetic sensor."
+                                },
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF7C2D12),
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Main Rotating Dynamic Compass Dial
+            val compassAlpha = if (isLowAccuracy) 0.5f else 1.0f
+
             Box(
                 modifier = Modifier
                     .size(300.dp)
@@ -385,11 +502,11 @@ fun QiblaScreen(
                     .background(SurfaceWhite)
                     .border(3.5.dp, dialBorderColor, CircleShape)
                     .pointerInput(Unit) {
-                        // Allow dragging dial to rotate interactively
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            isManualMode = true
-                            manualSimulatedHeading = (manualSimulatedHeading - dragAmount.x * 0.5f + 360f) % 360f
+                        if (isManualMode) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                manualSimulatedHeading = (manualSimulatedHeading - dragAmount.x * 0.5f + 360f) % 360f
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -405,15 +522,22 @@ fun QiblaScreen(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(if (isAligned) SuccessGreen else DeepVibrantTeal)
+                            .background(
+                                when {
+                                    isLowAccuracy -> Color(0xFF9E9E9E)
+                                    isAligned -> SuccessGreen
+                                    else -> DeepVibrantTeal
+                                }
+                            )
                     )
                 }
 
-                // Rotating Compass Dial (Rotates negatively with device heading: -heading)
+                // Rotating Compass Dial (Rotates with negative device True Heading: -heading)
                 val dialRotation = -animatedHeading.value
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .alpha(compassAlpha)
                         .rotate(dialRotation),
                     contentAlignment = Alignment.Center
                 ) {
@@ -423,7 +547,7 @@ fun QiblaScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
-                        drawCompassDial(isAligned = isAligned)
+                        drawCompassDial(isAligned = isAligned, isLowAccuracy = isLowAccuracy)
                     }
 
                     // Kaaba Needle Marker located at Kaaba azimuth on the dial
@@ -439,19 +563,34 @@ fun QiblaScreen(
                                 .fillMaxSize()
                                 .padding(top = 22.dp)
                         ) {
-                            // Kaaba icon badge
+                            // Kaaba icon badge (dimmed/grayed when accuracy is low)
+                            val markerBorderColor = when {
+                                isLowAccuracy -> Color(0xFFB0BEC5)
+                                isAligned -> SuccessGreen
+                                else -> MetallicGold
+                            }
+                            val markerBgColor = when {
+                                isLowAccuracy -> Color(0xFF546E7A)
+                                else -> DarkPine
+                            }
+                            val markerTint = when {
+                                isLowAccuracy -> Color(0xFFCFD8DC)
+                                isAligned -> SuccessGreen
+                                else -> MetallicGold
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
                                     .clip(CircleShape)
-                                    .background(DarkPine)
-                                    .border(2.dp, if (isAligned) SuccessGreen else MetallicGold, CircleShape),
+                                    .background(markerBgColor)
+                                    .border(2.dp, markerBorderColor, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Mosque,
                                     contentDescription = "Kaaba Marker",
-                                    tint = if (isAligned) SuccessGreen else MetallicGold,
+                                    tint = markerTint,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -465,8 +604,8 @@ fun QiblaScreen(
                                     .background(
                                         Brush.verticalGradient(
                                             listOf(
-                                                if (isAligned) SuccessGreen else MetallicGold,
-                                                DeepVibrantTeal,
+                                                if (isLowAccuracy) Color(0xFF90A4AE) else (if (isAligned) SuccessGreen else MetallicGold),
+                                                if (isLowAccuracy) Color(0xFFB0BEC5) else DeepVibrantTeal,
                                                 Color.Transparent
                                             )
                                         )
@@ -479,7 +618,11 @@ fun QiblaScreen(
                 // Central Hub (Shows current Kaaba angle & Alignment glow)
                 Surface(
                     shape = CircleShape,
-                    color = if (isAligned) SuccessGreen else DarkPine,
+                    color = when {
+                        isLowAccuracy -> Color(0xFF64748B)
+                        isAligned -> SuccessGreen
+                        else -> DarkPine
+                    },
                     border = BorderStroke(2.5.dp, Color.White),
                     modifier = Modifier
                         .size(60.dp)
@@ -500,9 +643,13 @@ fun QiblaScreen(
                                 )
                             )
                             Text(
-                                text = if (isAligned) "QIBLA" else "BEARING",
+                                text = when {
+                                    isLowAccuracy -> "UNCAL"
+                                    isAligned -> "QIBLA"
+                                    else -> "BEARING"
+                                },
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (isAligned) Color.White else MetallicGold,
+                                    color = if (isAligned) Color.White else (if (isLowAccuracy) Color(0xFFE2E8F0) else MetallicGold),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 8.sp,
                                     letterSpacing = 0.5.sp
@@ -511,124 +658,211 @@ fun QiblaScreen(
                         }
                     }
                 }
-            }
 
-            // Interactive Controls / Testing Buttons (Rotate phone simulation)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = SurfaceWhite,
-                border = BorderStroke(1.dp, BorderTealLight)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                // Low Accuracy Warning Overlay Badge in Center-Bottom of Dial
+                if (isLowAccuracy) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 26.dp)
                     ) {
-                        Text(
-                            text = if (isArabic) "تجربة وتدوير البوصلة (Simulation)" else "Interactive Compass Rotation",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = DarkPine
-                            )
-                        )
-
-                        Text(
-                            text = if (isManualMode) "Manual Mode" else "Sensor Mode",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = if (isManualMode) DeepVibrantTeal else SuccessGreen,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                isManualMode = true
-                                manualSimulatedHeading = (manualSimulatedHeading - 45f + 360f) % 360f
-                                viewModel.triggerHaptic()
-                            },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            shape = RoundedCornerShape(8.dp)
+                        Surface(
+                            shape = RoundedCornerShape(100.dp),
+                            color = Color(0xFFDC2626),
+                            border = BorderStroke(1.dp, Color.White)
                         ) {
-                            Text("-45°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                isManualMode = true
-                                manualSimulatedHeading = (manualSimulatedHeading - 15f + 360f) % 360f
-                                viewModel.triggerHaptic()
-                            },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("-15°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        Button(
-                            onClick = {
-                                isManualMode = true
-                                manualSimulatedHeading = qiblaInfo.azimuthDegrees
-                                viewModel.triggerHaptic()
-                            },
-                            modifier = Modifier.weight(1.3f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isAligned) SuccessGreen else DeepVibrantTeal
-                            ),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = if (isArabic) "وجه للقبلة" else "Align 🕋",
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                isManualMode = true
-                                manualSimulatedHeading = (manualSimulatedHeading + 15f) % 360f
-                                viewModel.triggerHaptic()
-                            },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("+15°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                isManualMode = true
-                                manualSimulatedHeading = (manualSimulatedHeading + 45f) % 360f
-                                viewModel.triggerHaptic()
-                            },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("+45°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WarningAmber,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = if (isArabic) "دقة منخفضة" else "Uncalibrated",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Bottom Actions: Prayer Timings & Calibration info
+            // Magnetic Interference Notice (Persistent Notice with Soft Red/Pink background)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFFFF1F0), // Soft rose / salmon background
+                border = BorderStroke(1.dp, Color(0xFFFCA5A5).copy(alpha = 0.6f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEF4444).copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Interference Notice",
+                            tint = Color(0xFFB91C1C),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = if (isArabic) "تنبيه التداخل المغناطيسي" else "Compass Accuracy & Interference Notice",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7F1D1D)
+                            )
+                        )
+                        Text(
+                            text = if (isArabic) {
+                                "للحصول على نتائج دقيقة، ابتعد عن الأجسام المعدنية (هياكل السيارات، الأثاث الفولاذي)، والأغطية وحوامل الهواتف المغناطيسية، والسماعات ومكبرات الصوت، والأجهزة الإلكترونية وكابلات الكهرباء، ثم عاير البوصلة بتحريك هاتفك في الهواء على شكل رقم 8."
+                            } else {
+                                "For accurate results, move away from metal objects (car bodies, steel furniture, rebar), magnetic phone cases or mounts, speakers/headphones or devices with magnets, and nearby electronics or power cables, then calibrate by moving your phone in a figure-8 motion."
+                            },
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFF881337),
+                                fontSize = 11.8.sp,
+                                lineHeight = 16.5.sp
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Fallback Manual Calibration Simulator (Only for testing or when hardware sensor is missing)
+            if (isManualMode || !compassSensorManager.hasCompassSensors) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = SurfaceWhite,
+                    border = BorderStroke(1.dp, BorderTealLight)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isArabic) "محاكي الاتجاه اليدوي" else "Manual Orientation Simulator",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkPine
+                                )
+                            )
+
+                            Text(
+                                text = "${manualSimulatedHeading.roundToInt()}°",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = DeepVibrantTeal,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    manualSimulatedHeading = (manualSimulatedHeading - 45f + 360f) % 360f
+                                    viewModel.triggerHaptic()
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("-45°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    manualSimulatedHeading = (manualSimulatedHeading - 15f + 360f) % 360f
+                                    viewModel.triggerHaptic()
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("-15°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = {
+                                    manualSimulatedHeading = qiblaInfo.azimuthDegrees
+                                    viewModel.triggerHaptic()
+                                },
+                                modifier = Modifier.weight(1.3f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isAligned) SuccessGreen else DeepVibrantTeal
+                                ),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (isArabic) "وجه للقبلة" else "Align 🕋",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    manualSimulatedHeading = (manualSimulatedHeading + 15f) % 360f
+                                    viewModel.triggerHaptic()
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("+15°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    manualSimulatedHeading = (manualSimulatedHeading + 45f) % 360f
+                                    viewModel.triggerHaptic()
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("+45°", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom Actions: Prayer Timings Navigation
             Button(
                 onClick = { viewModel.navigateToSalat(SalatTab.TIMES) },
                 modifier = Modifier
@@ -654,7 +888,7 @@ fun QiblaScreen(
     }
 }
 
-private fun DrawScope.drawCompassDial(isAligned: Boolean) {
+private fun DrawScope.drawCompassDial(isAligned: Boolean, isLowAccuracy: Boolean = false) {
     val center = Offset(size.width / 2f, size.height / 2f)
     val radius = size.minDimension / 2f
 
@@ -676,6 +910,7 @@ private fun DrawScope.drawCompassDial(isAligned: Boolean) {
         val endY = (center.y + radius * kotlin.math.sin(angleRad)).toFloat()
 
         val tickColor = when {
+            isLowAccuracy -> Color(0xFF9E9E9E).copy(alpha = if (isCardinal) 0.8f else 0.4f)
             i == 0 -> Color(0xFFE53935) // North is Red
             isCardinal -> DeepVibrantTeal
             isMajor -> SlateTealMuted
@@ -696,3 +931,4 @@ private fun DrawScope.drawCompassDial(isAligned: Boolean) {
         )
     }
 }
+

@@ -1,6 +1,7 @@
 package com.example.data.prayer
 
 import android.content.Context
+import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -8,13 +9,23 @@ import android.hardware.SensorManager
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
- * Provides real-time heading (azimuth in degrees: 0° = North, 90° = East, 180° = South, 270° = West)
- * using the device's hardware rotation vector and geomagnetic sensors.
+ * Encapsulates real-time compass telemetry including raw magnetic heading,
+ * True North corrected heading (via GeomagneticField declination), sensor accuracy,
+ * and calibration state.
+ */
+data class CompassReading(
+    val rawHeading: Float,       // 0..360° relative to Magnetic North
+    val trueHeading: Float,      // 0..360° relative to True North (Declination corrected)
+    val accuracy: Int,           // SensorManager.SENSOR_STATUS_* (0=UNRELIABLE, 1=LOW, 2=MEDIUM, 3=HIGH)
+    val declination: Float,      // Degrees declination applied (+ = East, - = West)
+    val isLowAccuracy: Boolean   // True if accuracy is LOW (1) or UNRELIABLE (0)
+)
+
+/**
+ * Provides real-time heading and True North azimuth using hardware rotation vector
+ * and geomagnetic sensors, corrected with magnetic declination.
  */
 class CompassSensorManager(context: Context) {
 
@@ -27,15 +38,44 @@ class CompassSensorManager(context: Context) {
     val hasCompassSensors: Boolean
         get() = rotationVectorSensor != null || (accelerometerSensor != null && magnetometerSensor != null)
 
-    fun getHeadingFlow(): Flow<Float> = callbackFlow {
+    /**
+     * Flow of comprehensive compass readings with True North declination correction
+     * and accuracy state monitoring.
+     */
+    fun getCompassFlow(
+        latitude: Double,
+        longitude: Double,
+        altitudeMeters: Double = 0.0
+    ): Flow<CompassReading> = callbackFlow {
         if (sensorManager == null) {
-            trySend(0f)
+            trySend(
+                CompassReading(
+                    rawHeading = 0f,
+                    trueHeading = 0f,
+                    accuracy = SensorManager.SENSOR_STATUS_ACCURACY_HIGH,
+                    declination = 0f,
+                    isLowAccuracy = false
+                )
+            )
             close()
             return@callbackFlow
         }
 
+        val declination = try {
+            val geoField = GeomagneticField(
+                latitude.toFloat(),
+                longitude.toFloat(),
+                altitudeMeters.toFloat(),
+                System.currentTimeMillis()
+            )
+            geoField.declination
+        } catch (e: Exception) {
+            0f
+        }
+
         var smoothedHeading = 0f
         var hasInitializedHeading = false
+        var currentAccuracy = SensorManager.SENSOR_STATUS_ACCURACY_HIGH
 
         val listener = object : SensorEventListener {
             private val rotationMatrix = FloatArray(9)
@@ -49,6 +89,10 @@ class CompassSensorManager(context: Context) {
 
             override fun onSensorChanged(event: SensorEvent?) {
                 if (event == null) return
+
+                if (event.accuracy != SensorManager.SENSOR_STATUS_NO_CONTACT) {
+                    currentAccuracy = event.accuracy
+                }
 
                 var rawHeading: Float? = null
 
@@ -93,15 +137,41 @@ class CompassSensorManager(context: Context) {
                         hasInitializedHeading = true
                     } else {
                         // Angle diff accounting for 0/360 wrap-around
-                        var diff = (heading - smoothedHeading + 540f) % 360f - 180f
+                        val diff = (heading - smoothedHeading + 540f) % 360f - 180f
                         smoothedHeading = (smoothedHeading + diff * 0.25f + 360f) % 360f
                     }
-                    trySend(smoothedHeading)
+
+                    val trueHeading = (smoothedHeading + declination + 360f) % 360f
+                    val isLow = currentAccuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW ||
+                            currentAccuracy == SensorManager.SENSOR_STATUS_UNRELIABLE
+
+                    trySend(
+                        CompassReading(
+                            rawHeading = smoothedHeading,
+                            trueHeading = trueHeading,
+                            accuracy = currentAccuracy,
+                            declination = declination,
+                            isLowAccuracy = isLow
+                        )
+                    )
                 }
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-                // No-op
+                currentAccuracy = accuracy
+                val isLow = accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW ||
+                        accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE
+                val trueHeading = (smoothedHeading + declination + 360f) % 360f
+
+                trySend(
+                    CompassReading(
+                        rawHeading = smoothedHeading,
+                        trueHeading = trueHeading,
+                        accuracy = accuracy,
+                        declination = declination,
+                        isLowAccuracy = isLow
+                    )
+                )
             }
         }
 
@@ -133,4 +203,15 @@ class CompassSensorManager(context: Context) {
             sensorManager.unregisterListener(listener)
         }
     }
+
+    /**
+     * Legacy simple heading flow.
+     */
+    fun getHeadingFlow(): Flow<Float> = callbackFlow {
+        getCompassFlow(0.0, 0.0).collect {
+            trySend(it.trueHeading)
+        }
+        awaitClose { }
+    }
 }
+

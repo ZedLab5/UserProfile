@@ -1,13 +1,15 @@
 package com.example.data.prayer
 
+import android.hardware.GeomagneticField
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Calculates high-accuracy great-circle Qibla azimuth (bearing to Kaaba in Makkah)
- * and geodesic distance in kilometers.
+ * Calculates high-accuracy great-circle Qibla azimuth (bearing to Kaaba in Makkah),
+ * geodesic distance in kilometers, and True North magnetic declination correction
+ * using Android's GeomagneticField API.
  */
 object QiblaCalculator {
 
@@ -15,16 +17,23 @@ object QiblaCalculator {
     const val KAABA_LONGITUDE = 39.826206
 
     data class QiblaInfo(
-        val azimuthDegrees: Float,       // 0..360° from True North
-        val distanceKm: Double,          // Distance to Kaaba in kilometers
-        val cardinalDirection: String,   // E.g. "ESE", "NE", "WSW"
-        val arabicDirection: String      // E.g. "شرق - جنوب شرقي"
+        val azimuthDegrees: Float,          // 0..360° from True North
+        val distanceKm: Double,             // Geodesic distance to Kaaba in kilometers
+        val cardinalDirection: String,      // E.g. "ESE", "NE", "WSW"
+        val arabicDirection: String,        // E.g. "شرق - جنوب شرقي"
+        val magneticDeclination: Float = 0f // Degrees declination from True North (+ = East, - = West)
     )
 
     /**
-     * Compute Qibla direction from current latitude and longitude.
+     * Compute Qibla direction from current latitude and longitude,
+     * including magnetic declination offset calculated via GeomagneticField.
      */
-    fun calculateQibla(latitude: Double, longitude: Double): QiblaInfo {
+    fun calculateQibla(
+        latitude: Double,
+        longitude: Double,
+        altitudeMeters: Double = 0.0,
+        timeMillis: Long = System.currentTimeMillis()
+    ): QiblaInfo {
         val lat1Rad = Math.toRadians(latitude)
         val lon1Rad = Math.toRadians(longitude)
         val lat2Rad = Math.toRadians(KAABA_LATITUDE)
@@ -36,7 +45,7 @@ object QiblaCalculator {
         val x = cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(deltaLon)
 
         val initialBearingRad = atan2(y, x)
-        var azimuth = (Math.toDegrees(initialBearingRad) + 360.0) % 360.0
+        val azimuth = (Math.toDegrees(initialBearingRad) + 360.0) % 360.0
 
         // Distance (Haversine formula)
         val deltaLat = lat2Rad - lat1Rad
@@ -47,12 +56,43 @@ object QiblaCalculator {
 
         val (cardinal, arabic) = getCompassHeadingLabels(azimuth)
 
+        // Calculate magnetic declination for this location
+        val declination = try {
+            val geoField = GeomagneticField(
+                latitude.toFloat(),
+                longitude.toFloat(),
+                altitudeMeters.toFloat(),
+                timeMillis
+            )
+            geoField.declination
+        } catch (e: Exception) {
+            0f
+        }
+
         return QiblaInfo(
             azimuthDegrees = azimuth.toFloat(),
             distanceKm = distanceKm,
             cardinalDirection = cardinal,
-            arabicDirection = arabic
+            arabicDirection = arabic,
+            magneticDeclination = declination
         )
+    }
+
+    /**
+     * Converts a raw magnetic sensor heading to a true north heading
+     * using the location's magnetic declination offset.
+     */
+    fun getTrueNorthHeading(rawMagneticHeading: Float, declination: Float): Float {
+        return (rawMagneticHeading + declination + 360f) % 360f
+    }
+
+    /**
+     * Computes the relative angle between the phone's top heading (True North)
+     * and the Qibla bearing. Range is -180..+180 degrees.
+     * 0° = perfectly pointing towards Kaaba.
+     */
+    fun computeRelativeAngle(qiblaTrueBearing: Float, phoneTrueHeading: Float): Float {
+        return ((qiblaTrueBearing - phoneTrueHeading + 540f) % 360f) - 180f
     }
 
     private fun getCompassHeadingLabels(degrees: Double): Pair<String, String> {
@@ -78,3 +118,4 @@ object QiblaCalculator {
         return directions[index % directions.size]
     }
 }
+
