@@ -81,6 +81,7 @@ import com.example.ui.salat.SalatScreen
 import com.example.ui.settings.AppSettingsModal
 import com.example.ui.streaks.StreaksScreen
 import com.example.ui.tasbih.TasbihScreen
+import com.example.ui.tools.AllToolsScreen
 import com.example.ui.theme.BorderTealGray
 import com.example.ui.theme.CanvasMint
 import com.example.ui.theme.DarkPine
@@ -241,6 +242,10 @@ fun NoorApp(
                     NoorDestination.AZKAR_READER -> AzkarReaderScreen(viewModel = viewModel)
                     NoorDestination.FAVORITES -> FavoritesScreen(viewModel = viewModel)
                     NoorDestination.PROFILE -> UserProfileScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { viewModel.navigateBack() }
+                    )
+                    NoorDestination.ALL_TOOLS -> AllToolsScreen(
                         viewModel = viewModel,
                         onNavigateBack = { viewModel.navigateBack() }
                     )

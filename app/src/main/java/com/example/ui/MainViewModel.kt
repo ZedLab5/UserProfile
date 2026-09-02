@@ -81,7 +81,8 @@ enum class NoorDestination {
     DUAS_LIBRARY,
     AZKAR_READER,
     FAVORITES,
-    PROFILE
+    PROFILE,
+    ALL_TOOLS
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {

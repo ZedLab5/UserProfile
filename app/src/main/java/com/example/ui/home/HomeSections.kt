@@ -1268,7 +1268,7 @@ fun SpiritualEssentialsGrid(
         title = stringResource(R.string.home_spiritual_essentials_title),
         subtitle = stringResource(R.string.home_spiritual_essentials_subtitle),
         actionLabel = stringResource(R.string.home_all_tools),
-        onActionClick = { viewModel.navigateTo(NoorDestination.QURAN_SURAH_LIST) },
+        onActionClick = { viewModel.navigateTo(NoorDestination.ALL_TOOLS) },
         modifier = modifier
     ) {
         // 6 Cards (3 Stacked Over 3) housed comfortably inside the uniform card container
