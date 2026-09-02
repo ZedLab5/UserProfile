@@ -2354,6 +2354,55 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ============================================================
+    // BACKUP & RESTORE UTILITIES
+    // ============================================================
+
+    suspend fun exportBackupJson(): String {
+        return com.example.data.backup.BackupManager.generateBackupJson(
+            dao = db.noorDao(),
+            userName = userName.value,
+            userEmail = userEmail.value,
+            userBio = userBio.value,
+            appLanguage = appLanguage.value
+        )
+    }
+
+    suspend fun importBackupJson(jsonString: String): com.example.data.backup.ImportResult {
+        val result = com.example.data.backup.BackupManager.restoreFromJson(
+            jsonString = jsonString,
+            dao = db.noorDao(),
+            onProfileRestored = { name, email, bio, lang ->
+                if (name.isNotBlank()) userName.value = name
+                if (email.isNotBlank()) userEmail.value = email
+                if (bio.isNotBlank()) userBio.value = bio
+                if (lang.isNotBlank()) setAppLanguage(lang)
+                isUserLoggedIn.value = true
+                sharedPrefs.edit()
+                    .putBoolean("user_logged_in", true)
+                    .putString("user_name", name)
+                    .putString("user_email", email)
+                    .putString("user_bio", bio)
+                    .apply()
+            }
+        )
+        if (result.success) {
+            showToast("Backup restored successfully!")
+        } else {
+            showToast(result.message)
+        }
+        return result
+    }
+
+    fun shareBackup(context: Context, backupJson: String) {
+        com.example.data.backup.BackupManager.shareBackup(context, backupJson)
+    }
+
+    fun copyBackup(context: Context, backupJson: String) {
+        com.example.data.backup.BackupManager.copyToClipboard(context, backupJson)
+        showToast("Backup copied to clipboard!")
+    }
+
     private fun triggerCompletionHaptic() {
         try {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

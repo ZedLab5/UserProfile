@@ -116,7 +116,7 @@ fun AppSettingsModal(
 
     // Independent expansion state for each individual drop-down accordion
     var isThemeExpanded by remember { mutableStateOf(false) }
-    var isLanguageExpanded by remember { mutableStateOf(true) }
+    var isLanguageExpanded by remember { mutableStateOf(false) }
     var isNotifExpanded by remember { mutableStateOf(false) }
     var isCalcExpanded by remember { mutableStateOf(false) }
     var isContactExpanded by remember { mutableStateOf(false) }
@@ -231,7 +231,6 @@ fun AppSettingsModal(
                         icon = Icons.Default.LightMode,
                         title = stringResource(R.string.settings_section_theme),
                         subtitle = stringResource(R.string.settings_theme_fixed_sub),
-                        trailingBadge = stringResource(R.string.action_completed),
                         isExpanded = isThemeExpanded,
                         onToggleExpand = { isThemeExpanded = !isThemeExpanded }
                     ) {
@@ -282,7 +281,6 @@ fun AppSettingsModal(
                         icon = Icons.Default.Language,
                         title = stringResource(R.string.settings_section_language),
                         subtitle = stringResource(R.string.settings_language_sub),
-                        trailingBadge = appLanguage,
                         isExpanded = isLanguageExpanded,
                         onToggleExpand = { isLanguageExpanded = !isLanguageExpanded }
                     ) {
@@ -625,7 +623,6 @@ fun AppSettingsModal(
                         icon = Icons.Default.Security,
                         title = stringResource(R.string.settings_section_privacy),
                         subtitle = stringResource(R.string.settings_privacy_sub),
-                        trailingBadge = "100%",
                         isExpanded = isPrivacyExpanded,
                         onToggleExpand = { isPrivacyExpanded = !isPrivacyExpanded }
                     ) {
@@ -662,7 +659,6 @@ fun AppSettingsModal(
                         icon = Icons.Default.Info,
                         title = stringResource(R.string.settings_section_about),
                         subtitle = stringResource(R.string.settings_about_sub),
-                        trailingBadge = "v2.4.0",
                         isExpanded = isAboutExpanded,
                         onToggleExpand = { isAboutExpanded = !isAboutExpanded }
                     ) {
@@ -717,7 +713,7 @@ fun AppSettingsModal(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(18.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -728,14 +724,14 @@ fun AppSettingsModal(
                                     modifier = Modifier
                                         .size(38.dp)
                                         .clip(RoundedCornerShape(11.dp))
-                                        .background(NoorGoldSoft)
-                                        .border(1.dp, NoorGoldBorder, RoundedCornerShape(11.dp)),
+                                        .background(NoorSoftGreenBg)
+                                        .border(1.dp, NoorSoftGreenBorder, RoundedCornerShape(11.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Share,
                                         contentDescription = null,
-                                        tint = NoorGoldAccent,
+                                        tint = NoorTealDark,
                                         modifier = Modifier.size(19.dp)
                                     )
                                 }
@@ -767,7 +763,7 @@ fun AppSettingsModal(
                                     color = NoorDarkPine,
                                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                     fontSize = 12.sp,
-                                    lineHeight = 16.sp
+                                    lineHeight = 16.5.sp
                                 )
                             )
 
@@ -777,69 +773,75 @@ fun AppSettingsModal(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Button(
-                                    onClick = {
-                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(
-                                                Intent.EXTRA_TEXT,
-                                                "Assalamu Alaikum! Check out Al-Noor – Your spiritual companion with verified Quran, prayer times, authentic Du'as, Khatma plans, and Ask Noor AI.\n\nhttps://alnoorapp.com"
-                                            )
-                                        }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share Al-Noor via"))
-                                    },
+                                Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = NoorDarkPine),
+                                    color = Color.Transparent,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(48.dp)
+                                        .height(42.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(com.example.ui.components.NoorTopBarGradient)
+                                        .clickable {
+                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(
+                                                    Intent.EXTRA_TEXT,
+                                                    "Assalamu Alaikum! Check out Al-Noor – Your spiritual companion with verified Quran, prayer times, authentic Du'as, Khatma plans, and Ask Noor AI.\n\nhttps://alnoorapp.com"
+                                                )
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share Al-Noor via"))
+                                        }
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = null,
-                                        tint = NoorGoldAccent,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Share App", color = Color.White, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                                    Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Share App", color = Color.White, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = NoorGoldSoft,
-                                    border = BorderStroke(1.dp, NoorGoldBorder),
+                                    color = Color(0xFFF4FAF7),
+                                    border = BorderStroke(1.dp, Color(0xFFCCE4DC)),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(48.dp)
+                                        .height(42.dp)
+                                        .clip(RoundedCornerShape(12.dp))
                                         .clickable {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                             clipboard.setPrimaryClip(ClipData.newPlainText("Al-Noor Link", "https://alnoorapp.com"))
                                             viewModel.showToast("App share link copied to clipboard!")
                                         }
                                 ) {
-                                    Box(
+                                    Row(
                                         modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ContentCopy,
-                                                contentDescription = null,
-                                                tint = NoorGoldAccent,
-                                                modifier = Modifier.size(15.dp)
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = null,
+                                            tint = NoorTealDark,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Copy Link",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = NoorTealDark,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.5.sp
                                             )
-                                            Text(
-                                                text = "Copy Link",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = NoorGoldAccent,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 12.5.sp
-                                                )
-                                            )
-                                        }
+                                        )
                                     }
                                 }
                             }
@@ -1033,8 +1035,8 @@ private fun SettingsAccordionCard(
                             if (trailingBadge != null) {
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    color = NoorGoldSoft,
-                                    border = BorderStroke(0.8.dp, NoorGoldBorder)
+                                    color = NoorSoftGreenBg,
+                                    border = BorderStroke(0.8.dp, NoorSoftGreenBorder)
                                 ) {
                                     Text(
                                         text = trailingBadge,
@@ -1042,7 +1044,7 @@ private fun SettingsAccordionCard(
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontSize = 9.5.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = NoorGoldAccent
+                                            color = NoorTealDark
                                         )
                                     )
                                 }

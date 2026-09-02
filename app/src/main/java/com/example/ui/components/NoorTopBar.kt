@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -146,8 +147,8 @@ fun NoorTopBar(
                 .padding(
                     start = 20.dp,
                     end = 20.dp,
-                    top = if (isLargeTitle) 16.dp else 13.dp,
-                    bottom = if (isLargeTitle) 18.dp else 15.dp
+                    top = if (isLargeTitle) 16.dp else 14.dp,
+                    bottom = if (isLargeTitle) 24.dp else 20.dp
                 ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -223,3 +224,42 @@ fun NoorTopBar(
         }
     }
 }
+
+/**
+ * NoorGradientButton - Reusable button styled with the signature NoorTopBar emerald gradient.
+ */
+@Composable
+fun NoorGradientButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: androidx.compose.ui.graphics.Shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                if (enabled) NoorTopBarGradient else Brush.linearGradient(
+                    listOf(Color(0xFF8BA39B), Color(0xFF8BA39B))
+                )
+            )
+            .clickable(
+                enabled = enabled,
+                onClick = onClick,
+                role = Role.Button,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true, color = Color.White)
+            )
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            content = content
+        )
+    }
+}
+

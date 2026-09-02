@@ -3,6 +3,8 @@ package com.example.ui.profile
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -38,13 +40,17 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -125,6 +131,9 @@ fun UserProfileScreen(
     var showEditProfileSheet by remember { mutableStateOf(false) }
     var showChangePasswordSheet by remember { mutableStateOf(false) }
     var showConnectSheet by remember { mutableStateOf(false) }
+    var showBackupRestoreSheet by remember { mutableStateOf(false) }
+    var showPrivacyPolicySheet by remember { mutableStateOf(false) }
+    var showContactSupportDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
@@ -145,7 +154,7 @@ fun UserProfileScreen(
                 }
             )
         },
-        containerColor = Color(0xFFF6FAF8),
+        containerColor = Color.White,
         modifier = modifier
     ) { paddingValues ->
         LazyColumn(
@@ -155,10 +164,10 @@ fun UserProfileScreen(
             contentPadding = PaddingValues(top = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. User Profile Header Card
+            // 1. User Profile Header Card (Guest mode & avatar WITHOUT border, completely white)
             item(key = "user_header_section") {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    UserProfileCard(
+                    UserProfileHeader(
                         viewModel = viewModel,
                         isUserLoggedIn = isUserLoggedIn,
                         userName = userName,
@@ -169,22 +178,42 @@ fun UserProfileScreen(
                 }
             }
 
-            // 2. Account & Security Section
-            item(key = "account_security_section") {
+            // 2. Data & Sync Section (Backup and Restore, Cloud Sync)
+            item(key = "data_sync_section") {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    AccountSecuritySection(
-                        viewModel = viewModel,
+                    DataSyncSection(
                         isUserLoggedIn = isUserLoggedIn,
                         isCloudSync = isCloudSync,
-                        onEditProfileClick = { if (isUserLoggedIn) showEditProfileSheet = true else showConnectSheet = true },
-                        onChangePasswordClick = { if (isUserLoggedIn) showChangePasswordSheet = true else showConnectSheet = true },
+                        onBackupRestoreClick = { showBackupRestoreSheet = true },
                         onCloudSyncToggle = { viewModel.toggleCloudSync() },
                         onConnectClick = { showConnectSheet = true }
                     )
                 }
             }
 
-            // 3. Account Actions Section (Log Out, Delete Account)
+            // 3. App Preferences & Security Section
+            item(key = "app_preferences_section") {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    PreferencesSecuritySection(
+                        isUserLoggedIn = isUserLoggedIn,
+                        onEditProfileClick = { if (isUserLoggedIn) showEditProfileSheet = true else showConnectSheet = true },
+                        onChangePasswordClick = { if (isUserLoggedIn) showChangePasswordSheet = true else showConnectSheet = true },
+                        onAppSettingsClick = { viewModel.openSettingsModal() }
+                    )
+                }
+            }
+
+            // 4. Support & Legal Section (Privacy Policy & Contact Us)
+            item(key = "support_legal_section") {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SupportLegalSection(
+                        onPrivacyPolicyClick = { showPrivacyPolicySheet = true },
+                        onContactSupportClick = { showContactSupportDialog = true }
+                    )
+                }
+            }
+
+            // 5. Account Actions Section (Log Out, Delete Account)
             item(key = "account_actions_section") {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     AccountActionsSection(
@@ -196,6 +225,29 @@ fun UserProfileScreen(
                     )
                 }
             }
+        }
+
+        // Backup & Restore Bottom Sheet
+        if (showBackupRestoreSheet) {
+            BackupRestoreSheet(
+                viewModel = viewModel,
+                onDismiss = { showBackupRestoreSheet = false }
+            )
+        }
+
+        // Privacy Policy Bottom Sheet
+        if (showPrivacyPolicySheet) {
+            PrivacyPolicyBottomSheet(
+                onDismiss = { showPrivacyPolicySheet = false }
+            )
+        }
+
+        // Contact Support Dialog
+        if (showContactSupportDialog) {
+            ContactSupportDialog(
+                viewModel = viewModel,
+                onDismiss = { showContactSupportDialog = false }
+            )
         }
 
         // Connect Account Bottom Sheet
@@ -295,8 +347,11 @@ fun UserProfileScreen(
     }
 }
 
+/**
+ * 1. User Header: clean seamless white, NO border around container or avatar image
+ */
 @Composable
-private fun UserProfileCard(
+private fun UserProfileHeader(
     viewModel: MainViewModel,
     isUserLoggedIn: Boolean,
     userName: String,
@@ -308,24 +363,23 @@ private fun UserProfileCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = Color.White,
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, NoorCardBorder),
-        shadowElevation = 1.5.dp
+        shape = RoundedCornerShape(20.dp),
+        border = null,
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Avatar with tap-to-edit badge
+            // Avatar without border
             Box(
                 modifier = Modifier
-                    .size(72.dp)
+                    .size(70.dp)
                     .clip(CircleShape)
-                    .background(NoorGoldSoft)
-                    .border(2.dp, NoorGoldAccent, CircleShape)
+                    .background(NoorSoftGreenBg)
                     .clickable { onAvatarClick() }
             ) {
                 Image(
@@ -335,39 +389,33 @@ private fun UserProfileCard(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Edit camera/tap overlay badge
+                // Subtle edit badge
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .size(24.dp)
+                        .size(22.dp)
                         .clip(CircleShape)
-                        .background(NoorTealDark)
-                        .border(1.5.dp, Color.White, CircleShape),
+                        .background(NoorTealDark),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Tap to edit",
                         tint = Color.White,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(11.dp)
                     )
                 }
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = if (isUserLoggedIn) userName else "Guest Mode",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = NoorDarkPine,
-                            fontSize = 19.sp
-                        )
+                Text(
+                    text = if (isUserLoggedIn) userName else "Guest Mode",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = NoorDarkPine,
+                        fontSize = 19.sp
                     )
-                }
+                )
 
                 Spacer(modifier = Modifier.height(3.dp))
 
@@ -376,33 +424,34 @@ private fun UserProfileCard(
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = NoorSageSlate,
                         fontSize = 12.5.sp
-                    )
+                    ),
+                    modifier = Modifier.clickable { onEditClick() }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Status Pill
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isUserLoggedIn) NoorSoftGreenBg else NoorGoldSoft,
-                    border = BorderStroke(1.dp, if (isUserLoggedIn) NoorSoftGreenBorder else NoorGoldBorder)
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isUserLoggedIn) NoorSoftGreenBg else Color(0xFFF6FAF8),
+                    border = BorderStroke(0.8.dp, if (isUserLoggedIn) NoorSoftGreenBorder else NoorCardBorder)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
                     ) {
                         Icon(
                             imageVector = if (isUserLoggedIn) Icons.Default.CloudDone else Icons.Default.CloudOff,
                             contentDescription = null,
-                            tint = if (isUserLoggedIn) NoorTealDark else NoorGoldAccent,
+                            tint = if (isUserLoggedIn) NoorTealDark else NoorSageSlate,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
-                            text = if (isUserLoggedIn) "Connected (Google / Cloud)" else "Guest Account",
+                            text = if (isUserLoggedIn) "Connected (Cloud Sync Active)" else "Guest Mode (Local Only)",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = if (isUserLoggedIn) NoorTealDark else NoorGoldAccent,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isUserLoggedIn) NoorTealDark else NoorSageSlate,
                                 fontSize = 11.sp
                             )
                         )
@@ -413,27 +462,28 @@ private fun UserProfileCard(
     }
 }
 
+/**
+ * 2. Data & Sync Section with soft border
+ */
 @Composable
-private fun AccountSecuritySection(
-    viewModel: MainViewModel,
+private fun DataSyncSection(
     isUserLoggedIn: Boolean,
     isCloudSync: Boolean,
-    onEditProfileClick: () -> Unit,
-    onChangePasswordClick: () -> Unit,
+    onBackupRestoreClick: () -> Unit,
     onCloudSyncToggle: () -> Unit,
     onConnectClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "ACCOUNT & SECURITY",
+            text = "DATA & SYNCHRONIZATION",
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = NoorSageSlate,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 letterSpacing = 0.5.sp
             ),
             modifier = Modifier.padding(start = 4.dp)
@@ -443,42 +493,32 @@ private fun AccountSecuritySection(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             color = Color.White,
-            border = BorderStroke(1.dp, NoorCardBorder),
-            shadowElevation = 1.dp
+            border = BorderStroke(1.dp, NoorCardBorder)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 4.dp)
             ) {
-                // Edit Profile
+                // Backup & Restore
                 SettingsRowItem(
-                    icon = Icons.Default.Person,
-                    title = "Edit Profile",
-                    subtitle = "Update display name, avatar or bio",
-                    onClick = onEditProfileClick
+                    icon = Icons.Default.Sync,
+                    title = "Backup & Restore",
+                    subtitle = "Export to Drive/Email or import Khatma & bookmarks",
+                    badge = "New",
+                    onClick = onBackupRestoreClick
                 )
 
-                HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.6f), modifier = Modifier.padding(horizontal = 16.dp))
 
-                // Change Password
-                SettingsRowItem(
-                    icon = Icons.Default.Lock,
-                    title = "Change Password",
-                    subtitle = "Quick security update",
-                    onClick = onChangePasswordClick
-                )
-
-                HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
-
-                // Cloud Sync Status
+                // Cloud Sync Toggle
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
                             if (!isUserLoggedIn) onConnectClick() else onCloudSyncToggle()
                         }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 13.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -504,7 +544,7 @@ private fun AccountSecuritySection(
 
                         Column {
                             Text(
-                                text = "Cloud Sync Status",
+                                text = "Cloud Synchronization",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = NoorDarkPine,
@@ -512,7 +552,7 @@ private fun AccountSecuritySection(
                                 )
                             )
                             Text(
-                                text = if (isUserLoggedIn && isCloudSync) "Active (Google / Apple / Email)" else "Paused / Guest",
+                                text = if (isUserLoggedIn && isCloudSync) "Active (Automatic cloud backup)" else "Off (Local device only)",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = NoorSageSlate,
                                     fontSize = 11.5.sp
@@ -537,6 +577,135 @@ private fun AccountSecuritySection(
     }
 }
 
+/**
+ * 3. App Preferences & Security Section with soft border
+ */
+@Composable
+private fun PreferencesSecuritySection(
+    isUserLoggedIn: Boolean,
+    onEditProfileClick: () -> Unit,
+    onChangePasswordClick: () -> Unit,
+    onAppSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "ACCOUNT & SETTINGS",
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = NoorSageSlate,
+                fontSize = 11.5.sp,
+                letterSpacing = 0.5.sp
+            ),
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, NoorCardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                // App Settings
+                SettingsRowItem(
+                    icon = Icons.Default.Settings,
+                    title = "App Settings",
+                    subtitle = "Language, theme, notifications & prayer sound",
+                    onClick = onAppSettingsClick
+                )
+
+                HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.6f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                // Edit Profile
+                SettingsRowItem(
+                    icon = Icons.Default.Person,
+                    title = "Edit Profile",
+                    subtitle = "Update display name, avatar or bio",
+                    onClick = onEditProfileClick
+                )
+
+                HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.6f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                // Change Password
+                SettingsRowItem(
+                    icon = Icons.Default.Lock,
+                    title = "Security & Password",
+                    subtitle = "Quick password & security update",
+                    onClick = onChangePasswordClick
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 4. Support & Legal Section with soft border
+ */
+@Composable
+private fun SupportLegalSection(
+    onPrivacyPolicyClick: () -> Unit,
+    onContactSupportClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "SUPPORT & LEGAL",
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = NoorSageSlate,
+                fontSize = 11.5.sp,
+                letterSpacing = 0.5.sp
+            ),
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, NoorCardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                // Privacy Policy
+                SettingsRowItem(
+                    icon = Icons.Default.Security,
+                    title = "Privacy Policy & Data Security",
+                    subtitle = "100% offline, zero tracking, your data belongs to you",
+                    onClick = onPrivacyPolicyClick
+                )
+
+                HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.6f), modifier = Modifier.padding(horizontal = 16.dp))
+
+                // Contact Us
+                SettingsRowItem(
+                    icon = Icons.Default.Email,
+                    title = "Contact Us & Feedback",
+                    subtitle = "Reach our support team or request new features",
+                    onClick = onContactSupportClick
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 5. Account Actions with soft border
+ */
 @Composable
 private fun AccountActionsSection(
     viewModel: MainViewModel,
@@ -548,14 +717,14 @@ private fun AccountActionsSection(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "ACCOUNT ACTIONS",
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = NoorSageSlate,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 letterSpacing = 0.5.sp
             ),
             modifier = Modifier.padding(start = 4.dp)
@@ -565,13 +734,12 @@ private fun AccountActionsSection(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             color = Color.White,
-            border = BorderStroke(1.dp, NoorCardBorder),
-            shadowElevation = 1.dp
+            border = BorderStroke(1.dp, NoorCardBorder)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 4.dp)
             ) {
                 if (!isUserLoggedIn) {
                     SettingsRowItem(
@@ -589,7 +757,7 @@ private fun AccountActionsSection(
                         onClick = onLogOutClick
                     )
 
-                    HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = NoorCardBorder.copy(alpha = 0.6f), modifier = Modifier.padding(horizontal = 16.dp))
 
                     SettingsRowItem(
                         icon = Icons.Default.Warning,
@@ -609,6 +777,7 @@ private fun SettingsRowItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    badge: String? = null,
     titleColor: Color = NoorDarkPine,
     onClick: () -> Unit
 ) {
@@ -616,7 +785,7 @@ private fun SettingsRowItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -629,7 +798,7 @@ private fun SettingsRowItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (titleColor == NoorDarkPine) NoorSurfaceSoft else Color(0xFFFDEDEC)),
+                    .background(if (titleColor == NoorDarkPine) NoorSoftGreenBg else Color(0xFFFDEDEC)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -641,14 +810,36 @@ private fun SettingsRowItem(
             }
 
             Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = titleColor,
-                        fontSize = 14.sp
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor,
+                            fontSize = 14.sp
+                        )
                     )
-                )
+                    if (badge != null) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = NoorSoftGreenBg,
+                            border = BorderStroke(0.8.dp, NoorSoftGreenBorder)
+                        ) {
+                            Text(
+                                text = badge,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NoorTealDark
+                                )
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -662,10 +853,262 @@ private fun SettingsRowItem(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
             contentDescription = null,
-            tint = NoorSageSlate.copy(alpha = 0.6f),
+            tint = NoorSageSlate.copy(alpha = 0.5f),
             modifier = Modifier.size(16.dp)
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PrivacyPolicyBottomSheet(
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(NoorSoftGreenBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        tint = NoorTealDark,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Privacy Policy & Security",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = NoorDarkPine,
+                            fontSize = 18.sp
+                        )
+                    )
+                    Text(
+                        text = "Your spiritual journey is private and protected",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = NoorSageSlate,
+                            fontSize = 12.sp
+                        )
+                    )
+                }
+            }
+
+            Text(
+                text = "Al-Noor is engineered from the ground up to guarantee total data sovereignty and privacy. We do not sell, track, or share your personal spiritual habits.",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = NoorDarkPine.copy(alpha = 0.85f),
+                    fontSize = 12.5.sp,
+                    lineHeight = 17.sp
+                )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(NoorSoftGreenBg)
+                    .border(1.dp, NoorSoftGreenBorder, RoundedCornerShape(14.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                PrivacyHighlightItem(
+                    title = "100% Offline by Default",
+                    description = "Quran text, translations, prayer times, and tasbih counts are stored directly on your local device."
+                )
+                PrivacyHighlightItem(
+                    title = "Zero Ad Tracking",
+                    description = "No third-party trackers, advertisements, or data brokers are embedded in the app."
+                )
+                PrivacyHighlightItem(
+                    title = "Transparent Backups",
+                    description = "You can export and import your entire database at any time using open, readable JSON format."
+                )
+            }
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NoorTealDark)
+            ) {
+                Text("Got It", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun PrivacyHighlightItem(title: String, description: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = NoorTealDark,
+            modifier = Modifier.size(16.dp).padding(top = 2.dp)
+        )
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = NoorDarkPine,
+                    fontSize = 13.sp
+                )
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = NoorSageSlate,
+                    fontSize = 11.5.sp,
+                    lineHeight = 15.sp
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContactSupportDialog(
+    viewModel: MainViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val emailAddress = "support@alnoorapp.com"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(NoorSoftGreenBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null,
+                        tint = NoorTealDark,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Text(
+                    text = "Contact Al-Noor Team",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = NoorDarkPine,
+                        fontSize = 16.sp
+                    )
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Have questions, feedback, or need help with your Quran Khatma and app settings? Reach out to our dedicated team anytime.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = NoorSageSlate,
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp
+                    )
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = NoorSoftGreenBg,
+                    border = BorderStroke(1.dp, NoorSoftGreenBorder),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Support Email", emailAddress))
+                            viewModel.showToast("Email address copied to clipboard!")
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = emailAddress,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = NoorTealDark,
+                                fontSize = 13.sp
+                            )
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Copy Email",
+                            tint = NoorTealDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:$emailAddress")
+                        putExtra(Intent.EXTRA_SUBJECT, "Al-Noor App Feedback / Support")
+                    }
+                    try {
+                        context.startActivity(Intent.createChooser(intent, "Send Email via"))
+                    } catch (e: Exception) {
+                        viewModel.showToast("No email client installed. Email copied to clipboard.")
+                    }
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NoorTealDark),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Open Email", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = NoorSageSlate)
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

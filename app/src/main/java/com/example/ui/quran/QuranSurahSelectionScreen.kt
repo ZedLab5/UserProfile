@@ -153,9 +153,189 @@ fun QuranSurahSelectionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Top Section: Continue / Start Reading or Continue Your Khatma (Soft Gold Background)
+            item(key = "quran_top_resume_section") {
+                val isKhatmaActive = khatmaState != null && !khatmaState!!.plan.isCompleted
+                val prog = readingProgress
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable {
+                            if (isKhatmaActive) {
+                                viewModel.continueKhatmaReading()
+                            } else if (prog != null) {
+                                viewModel.resumeReading(prog)
+                            } else {
+                                viewModel.selectSurahForReading(QuranData.surahs.first(), 1)
+                            }
+                        },
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color(0xFFFFFDF7),
+                    border = BorderStroke(1.2.dp, Color(0xFFE5C887).copy(alpha = 0.65f)),
+                    shadowElevation = 1.dp
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFFFFFDF8),
+                                        Color(0xFFFFF8E8),
+                                        Color(0xFFFFF2D6)
+                                    )
+                                )
+                            )
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(13.dp))
+                                        .background(Color(0xFFFDE8BB))
+                                        .border(1.dp, Color(0xFFD4A340).copy(alpha = 0.6f), RoundedCornerShape(13.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isKhatmaActive) Icons.Default.AutoStories else (if (prog != null) Icons.Default.Bookmark else Icons.Default.AutoStories),
+                                        contentDescription = null,
+                                        tint = Color(0xFFB8860B),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = if (isKhatmaActive) "CONTINUE YOUR KHATMA" else (if (prog != null) "CONTINUE READING" else "START READING"),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = Color(0xFFB8860B),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            letterSpacing = 0.8.sp
+                                        )
+                                    )
+
+                                    if (isKhatmaActive) {
+                                        val nextPos = khatmaState!!.nextReadingPosition
+                                        Text(
+                                            text = "${nextPos.surahNameEnglish} : Ayah ${nextPos.ayahNumber}",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = DarkPine,
+                                                fontSize = 15.5.sp
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "Juz ${nextPos.juzNumber} • ${khatmaState!!.progressPercentage.toInt()}% Completed (Day ${khatmaState!!.currentDayNumber}/${khatmaState!!.plan.totalDays})",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = SlateTealMuted,
+                                                fontSize = 12.sp
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    } else if (prog != null) {
+                                        Text(
+                                            text = "${prog.surahName} : Ayah ${prog.ayahNumber}",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = DarkPine,
+                                                fontSize = 15.5.sp
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "Ayah ${prog.ayahNumber} of ${prog.totalAyahs} • Last saved bookmark",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = SlateTealMuted,
+                                                fontSize = 12.sp
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Surah Al-Fatihah",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = DarkPine,
+                                                fontSize = 15.5.sp
+                                            )
+                                        )
+                                        Text(
+                                            text = "The Opening • 7 Ayahs • Begin your recitation",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = SlateTealMuted,
+                                                fontSize = 12.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Emerald TopBar Gradient CTA Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.Transparent,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(com.example.ui.components.NoorTopBarGradient)
+                                    .clickable {
+                                        if (isKhatmaActive) {
+                                            viewModel.continueKhatmaReading()
+                                        } else if (prog != null) {
+                                            viewModel.resumeReading(prog)
+                                        } else {
+                                            viewModel.selectSurahForReading(QuranData.surahs.first(), 1)
+                                        }
+                                    }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+                                ) {
+                                    Text(
+                                        text = if (isKhatmaActive) "Khatma" else (if (prog != null) "Resume" else "Start"),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.5.sp
+                                        )
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Streamlined Filter Navigation Tabs: "All", "Juz", and "Favorites"
             item(key = "tab_navigation") {
                 Row(
@@ -227,118 +407,6 @@ fun QuranSurahSelectionScreen(
                                     ),
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                 )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Reading Progress Resume Card (only shown when readingProgress != null)
-            readingProgress?.let { prog ->
-                item(key = "reading_resume_card") {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.resumeReading(prog)
-                            },
-                        shape = RoundedCornerShape(18.dp),
-                        color = SurfaceWhite,
-                        border = BorderStroke(1.2.dp, MetallicGold.copy(alpha = 0.4f))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(
-                                            Color(0xFFFFFDF5),
-                                            Color(0xFFFFF9EC),
-                                            Color(0xFFFFF3DB)
-                                        )
-                                    )
-                                )
-                                .padding(14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(GoldBadgeBg)
-                                            .border(1.dp, MetallicGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Bookmark,
-                                            contentDescription = "Bookmark",
-                                            tint = MetallicGold,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-
-                                    Column {
-                                        Text(
-                                            text = "Continue Reading",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = MetallicGold,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 11.sp
-                                            )
-                                        )
-                                        Text(
-                                            text = prog.surahName,
-                                            style = MaterialTheme.typography.titleSmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = DarkPine,
-                                                fontSize = 15.sp
-                                            )
-                                        )
-                                        Text(
-                                            text = "Ayah ${prog.ayahNumber} of ${prog.totalAyahs}",
-                                            style = MaterialTheme.typography.bodySmall.copy(
-                                                color = SlateTealMuted,
-                                                fontSize = 12.sp
-                                            )
-                                        )
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MetallicGold,
-                                    modifier = Modifier.clickable {
-                                        viewModel.resumeReading(prog)
-                                    }
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(
-                                            text = "Resume",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        )
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
